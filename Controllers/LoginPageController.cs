@@ -1,13 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using WebApplication.Models;
+using System.Linq;
 
 namespace WebApplication.Controllers
 {
     public class LoginPageController : Controller
     {
-        // Temporary Storage (Without Database)
-        private static string savedName = "";
-        private static string savedEmail = "";
-        private static string savedPassword = "";
+        private readonly AppDbContext _context;
+
+        public LoginPageController(AppDbContext context)
+        {
+            _context = context;
+        }
 
         // Login Page
         public IActionResult Index()
@@ -19,14 +23,10 @@ namespace WebApplication.Controllers
         [HttpPost]
         public IActionResult Login(string email, string password)
         {
-            // Default Admin Login
-            if (email == "admin@gmail.com" && password == "12345")
-            {
-                return RedirectToAction("Dashboard", "Admin");
-            }
+            var user = _context.Users.FirstOrDefault(x =>
+                x.Email == email && x.Password == password);
 
-            // Registered User Login
-            if (email == savedEmail && password == savedPassword)
+            if (user != null)
             {
                 return RedirectToAction("Dashboard", "Admin");
             }
@@ -45,9 +45,16 @@ namespace WebApplication.Controllers
         [HttpPost]
         public IActionResult Register(string name, string email, string password)
         {
-            savedName = name;
-            savedEmail = email;
-            savedPassword = password;
+            User user = new User()
+            {
+                FullName = name,
+                Email = email,
+                Password = password,
+                confirmPassword = password
+            };
+
+            _context.Users.Add(user);
+            _context.SaveChanges();
 
             TempData["Success"] = "Registration Successful. Please Login.";
 
@@ -64,9 +71,11 @@ namespace WebApplication.Controllers
         [HttpPost]
         public IActionResult ForgotPassword(string email)
         {
-            if (email == savedEmail)
+            var user = _context.Users.FirstOrDefault(x => x.Email == email);
+
+            if (user != null)
             {
-                ViewBag.Message = "Your Password is : " + savedPassword;
+                ViewBag.Message = "Your Password is : " + user.Password;
             }
             else
             {
